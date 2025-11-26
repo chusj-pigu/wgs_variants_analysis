@@ -23,7 +23,7 @@ include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_cnva
 // Import utility functions
 evaluate(new File("${projectDir}/lib/Utils.groovy"))
 
-
+//to do -remove line
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     NAMED WORKFLOWS FOR PIPELINE
