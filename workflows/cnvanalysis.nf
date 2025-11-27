@@ -3,13 +3,15 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { MAPPING } from '../subworkflows/local/mapping/mapping.nf'
-include { CNV_CHECK } from '../subworkflows/local/cnv_check/cnv_check.nf'
-include { SNP_CHECK } from '../subworkflows/local/snp_check/snp_check.nf'
+include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
+include { CNV_CHECK              } from '../subworkflows/local/cnv_check/cnv_check.nf'
+include { SNP_CHECK              } from '../subworkflows/local/snp_check/snp_check.nf'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_cnvanalysis_pipeline'
+include { VARIANTS_REPORT        } from '../subworkflows/local/report/variants_report.nf'
+include { MIDNIGHT_REPORT        } from '../subworkflows/local/report/final_report.nf'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +61,7 @@ workflow CNVANALYSIS {
     //
     // Collate and save software versions
     //
+    ch_versions.view{verchb -> "ch_versions before report = $verchb"}
     softwareVersionsToYAML(ch_versions)
         .collectFile(
             storeDir: "${params.outdir}/pipeline_info",
@@ -70,6 +73,35 @@ workflow CNVANALYSIS {
 
     
     versions       = ch_versions                 // channel: [ path(versions.yml) ]
+
+    /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    PREPARE REPORT
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    */
+    VARIANTS_REPORT(
+            MAPPING.out.coverage
+        )
+
+    /*
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        COLLECT SECTIONS
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    */
+
+    // Collect sections from all analysis steps
+    ch_sections = VARIANTS_REPORT.out.sections
+    
+    ch_mode = channel.of("WGS")
+    
+    ch_id = ch_samplesheet.map{item -> item[0]}
+    
+    MIDNIGHT_REPORT(
+        ch_id,
+        ch_sections,
+        ch_versions,
+        ch_mode
+    )
+
 
     // Emit outputs so the parent workflow can reference them
     emit:

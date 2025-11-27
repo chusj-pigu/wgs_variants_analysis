@@ -6,7 +6,9 @@ results/
 testing/
 testing*
 test_data/
+test_data*
 test_results/
+test_results*
 *.pyc
 null/
 .vscode/
