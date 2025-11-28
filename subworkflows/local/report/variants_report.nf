@@ -51,20 +51,14 @@ workflow VARIANTS_REPORT {
                 def meta = table.name.replace('_wgs_stats.tsv', '')
                 tuple(id:meta,table)
             }
-            //.combine(ch_minqs)
-            //.map { tuple ->
-            // Extract the existing values from the tuple
-            //def (meta, file, minqs) = tuple
+            .map {meta,table ->
+                def caption = "Summary statistics of filtered and aligned reads"
+                def col_names = ""
+                def section = "QC"
+                def process = "stats_qc-${meta.id}"
+                tuple(meta, table, caption, col_names, section, process)
+            }
 
-            // Transform chrom into two new variables
-            //def caption = "Summary statistics cramino for reads with phred QS > ${minqs}"
-            //def col_names = ""
-            //def section = "QC"
-            //def process = "stats-qc-${meta.id}"
-
-            // Return a new tuple with the additional variables
-            //return [meta, file, caption, col_names, section, process ]
-            //}
 
     QUARTO_TABLE(
         ch_stats

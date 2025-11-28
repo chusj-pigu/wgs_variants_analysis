@@ -32,7 +32,7 @@ workflow MIDNIGHT_REPORT {
     // Collapse the channel of versions into a single value
     versions = versions.collect().map { it.join('\n\n') }
     versions = ch_id.combine(versions)
-
+    
     // Give it an ID of versions
     versions = versions
         .map {
@@ -40,7 +40,7 @@ workflow MIDNIGHT_REPORT {
             def section = "Versions"
             def process = "versions"
 
-            [versions_out[0], versions_out[2]] + [section, process]
+            [versions_out[0], versions_out[1]] + [section, process]
             }
 
     QUARTO_TEXT(
@@ -55,10 +55,6 @@ workflow MIDNIGHT_REPORT {
     )
 
     ch_section_vers = QUARTO_SECTION.out.quarto_section
-        .join(ch_id)
-        .map { meta, section, input, qmd, project ->
-            tuple(id:project, section, input, qmd) }
-
 
     // // Add the versions to the channel of sections for every report
 
@@ -73,37 +69,44 @@ workflow MIDNIGHT_REPORT {
     ch_report_sections = ch_sections
         .groupTuple()
         .map { id, section, filePaths, reports ->
-            [id, section, filePaths, reports]
+            tuple(id, section, filePaths, reports)
         }
 
-    ch_title = ch_id
+    ch_title = ch_report_sections
         .combine(ch_mode)
-        .map { meta, mode ->
+        .map { meta, section, filePaths, reports, mode ->
             def title = "Variant Analysis Pipeline ${mode} Report"
-            tuple(id:meta, title) }
+            tuple(meta, title) }
 
-    ch_subtitle = ch_id
+    ch_subtitle = ch_report_sections
         .combine(ch_mode)
-        .map { meta, mode ->
+        .map { meta, section, filePaths, reports, mode ->
             def subtitles = "Outputs for the ${mode} branch of the Variant Analysis pipeline"
-            tuple(id:meta, subtitles)}
+            tuple(meta, subtitles)}
 
     ch_template = channel.fromPath(params.report_template)
-        .combine(ch_id)
-        .map {template,meta ->
-            tuple(id:meta,template)}
 
     ch_report_in = ch_report_sections
+        .combine(ch_template)
         .join(ch_title)
         .join(ch_subtitle)
-        .combine(ch_template)
+        .map { meta, section, filePaths, reports, template, title, subtitle ->
+            tuple(
+                tuple(meta, section, filePaths, reports),  
+                template,                                   
+                title,                                      
+                subtitle                                   
+            )
+        }
+
+    ch_report_in
 
     QUARTO_REPORT(
-        ch_report_sections,
-        ch_template,
-        ch_title,
-        ch_subtitle
-        )
+        ch_report_in.map { it[0] },  
+        ch_report_in.map { it[1] },  
+        ch_report_in.map { it[2] },  
+        ch_report_in.map { it[3] }   
+    )
 
     ch_report = QUARTO_REPORT.out.report
 
@@ -115,5 +118,5 @@ workflow MIDNIGHT_REPORT {
 */
 
     emit:
-    ch_report = channel.empty()
+    ch_report
 }

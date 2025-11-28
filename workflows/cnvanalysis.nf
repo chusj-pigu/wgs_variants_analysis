@@ -61,19 +61,11 @@ workflow CNVANALYSIS {
     //
     // Collate and save software versions
     //
-    ch_versions.view{verchb -> "ch_versions before report = $verchb"}
-    softwareVersionsToYAML(ch_versions)
-        .collectFile(
-            storeDir: "${params.outdir}/pipeline_info",
-            name: 'nf_core_'  +  'cnvanalysis_software_'  + 'mqc_'  + 'versions.yml',
-            sort: true,
-            newLine: true
-        ).set { ch_collated_versions }
-
-
+    ch_versions = ch_versions
+        .mix(MAPPING.out.versions)
+        //.mix(CNV_CHECK.out.versions)
+        //.mix(SNP_CHECK.out.versions)
     
-    versions       = ch_versions                 // channel: [ path(versions.yml) ]
-
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     PREPARE REPORT
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,8 +84,9 @@ workflow CNVANALYSIS {
     ch_sections = VARIANTS_REPORT.out.sections
     
     ch_mode = channel.of("WGS")
-    
-    ch_id = ch_samplesheet.map{item -> item[0]}
+
+    ch_id = ch_samplesheet.map{meta, fastqFiles, ref -> meta}
+
     
     MIDNIGHT_REPORT(
         ch_id,
@@ -106,7 +99,7 @@ workflow CNVANALYSIS {
     // Emit outputs so the parent workflow can reference them
     emit:
     multiqc_report = Channel.empty()   // placeholder - actual MultiQC step may set this
-    versions = versions
+    versions = ch_versions
 }
 
 /*
