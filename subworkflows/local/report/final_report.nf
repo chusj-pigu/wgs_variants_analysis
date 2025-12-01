@@ -28,11 +28,11 @@ workflow MIDNIGHT_REPORT {
 */
 
     // Extract all versions into a single channel of values
-    versions = softwareVersionsToYAML(ch_versions)
+    versions = softwareVersionsToYAML(ch_versions).view{it -> "versions = $it"}
     // Collapse the channel of versions into a single value
     versions = versions.collect().map { it.join('\n\n') }
     versions = ch_id.combine(versions)
-    
+
     // Give it an ID of versions
     versions = versions
         .map {
@@ -55,6 +55,9 @@ workflow MIDNIGHT_REPORT {
     )
 
     ch_section_vers = QUARTO_SECTION.out.quarto_section
+        .map{meta, section, filePaths, reports ->
+            tuple (id:meta.id, section, filePaths, reports)
+        }
 
     // // Add the versions to the channel of sections for every report
 
@@ -99,7 +102,7 @@ workflow MIDNIGHT_REPORT {
             )
         }
 
-    ch_report_in
+    ch_report_in.view{it -> "ch_report_in = $it"}
 
     QUARTO_REPORT(
         ch_report_in.map { it[0] },  

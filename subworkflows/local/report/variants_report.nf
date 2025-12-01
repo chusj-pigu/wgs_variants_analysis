@@ -70,7 +70,7 @@ workflow VARIANTS_REPORT {
 
     /*
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        CONSTRUCT QUARTO FIGURE FOR MPGI COVERAGE PLOT
+        INSERT QUARTO TABLE AS A SECTION
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     */
 
@@ -85,6 +85,8 @@ workflow VARIANTS_REPORT {
         ch_section_inputs,
         "Summary statistics"
     )
+
+    QUARTO_SECTION.out.quarto_section
 
     /*
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

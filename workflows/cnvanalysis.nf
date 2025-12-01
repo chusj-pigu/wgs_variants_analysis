@@ -63,8 +63,8 @@ workflow CNVANALYSIS {
     //
     ch_versions = ch_versions
         .mix(MAPPING.out.versions)
-        //.mix(CNV_CHECK.out.versions)
-        //.mix(SNP_CHECK.out.versions)
+        .mix(CNV_CHECK.out.versions)
+        .mix(SNP_CHECK.out.versions)
     
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     PREPARE REPORT
