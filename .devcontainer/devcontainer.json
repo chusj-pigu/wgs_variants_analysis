@@ -4,19 +4,21 @@
     "remoteUser": "gitpod",
     "runArgs": ["--privileged"],
 
-    // Configure tool-specific properties.
+    "initializeCommand": "mkdir -p \"${localEnv:HOME}/test_data/wgs_variant_analysis_test\" \"${localEnv:HOME}/test_data/ref_test\"",
+
+    "mounts": [
+        "source=${localEnv:HOME}/test_data/wgs_variant_analysis_test,target=/workspaces/test_data/wgs_variant_analysis_test,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/test_data/ref_test,target=/workspaces/test_data/ref_test,type=bind,consistency=cached"
+    ],
+
+    "postStartCommand": "sudo chown gitpod:gitpod /opt/conda/bin/nextflow && sudo chmod +x /opt/conda/bin/nextflow",
+
     "customizations": {
-        // Configure properties specific to VS Code.
         "vscode": {
-            // Set *default* container specific settings.json values on container create.
             "settings": {
                 "python.defaultInterpreterPath": "/opt/conda/bin/python"
             },
-
-            // Add the IDs of extensions you want installed when the container is created.
-            "extensions": ["ms-python.python", "ms-python.vscode-pylance", "nf-core.nf-core-extensionpack"],
-
-            "postStartCommand": "sudo chown gitpod:gitpod /opt/conda/bin/nextflow" 
+            "extensions": ["ms-python.python", "ms-python.vscode-pylance", "nf-core.nf-core-extensionpack"]
         }
     }
 }

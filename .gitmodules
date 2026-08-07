@@ -26,3 +26,7 @@
 	path = modules/local/sniffles
 	url = https://github.com/chusj-pigu/wf-modules.git
 	branch = sniffles
+[submodule "modules/local/seqkit"]
+	path = modules/local/seqkit
+	url = https://github.com/chusj-pigu/wf-modules
+	branch = seqkit

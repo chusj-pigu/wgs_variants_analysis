@@ -3,9 +3,11 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { MAPPING } from '../subworkflows/local/mapping/mapping.nf'
-include { CNV_CHECK } from '../subworkflows/local/cnv_check/cnv_check.nf'
-include { SNP_CHECK } from '../subworkflows/local/snp_check/snp_check.nf'
+include { CAT_FASTQ              } from '../modules/local/cat_fastq/main.nf'
+include { SEQKIT_STATS           } from '../modules/local/seqkit/main.nf'
+include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
+include { CNV_CHECK              } from '../subworkflows/local/cnv_check/cnv_check.nf'
+include { SNP_CHECK              } from '../subworkflows/local/snp_check/snp_check.nf'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -24,6 +26,20 @@ workflow CNVANALYSIS {
     main:
 
     ch_versions = Channel.empty()
+
+    CAT_FASTQ (
+        ch_samplesheet.map { meta, fastqFiles, ref ->
+            tuple(meta, fastqFiles instanceof List ? fastqFiles.flatten() : [fastqFiles])
+        }
+    )
+
+    //
+    // Run seqkit on the input fastq files to get basic stats
+    //
+    SEQKIT_STATS(
+        CAT_FASTQ.out.reads
+    )
+
     //
     // Run Mapping modules
     //
