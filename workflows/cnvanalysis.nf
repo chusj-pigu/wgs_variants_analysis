@@ -8,6 +8,10 @@ include { SEQKIT_STATS           } from '../modules/local/seqkit/main.nf'
 include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
 include { CNV_CHECK              } from '../subworkflows/local/cnv_check/cnv_check.nf'
 include { SNP_CHECK              } from '../subworkflows/local/snp_check/snp_check.nf'
+include { QUARTO_TEXT            } from '../modules/local/quarto/main.nf'
+include { QUARTO_SECTION         } from '../modules/local/quarto/main.nf'
+include { QUARTO_REPORT          } from '../modules/local/quarto/main.nf'
+include { QUARTO_TABLE           } from '../modules/local/quarto/main.nf'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -72,16 +76,57 @@ workflow CNVANALYSIS {
        ch_refinfo
     )
 
-    //
-    // Collate and save software versions
-    //
-    softwareVersionsToYAML(ch_versions)
-        .collectFile(
-            storeDir: "${params.outdir}/pipeline_info",
-            name: 'nf_core_'  +  'cnvanalysis_software_'  + 'mqc_'  + 'versions.yml',
-            sort: true,
-            newLine: true
-        ).set { ch_collated_versions }
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    SOFTWARE VERSIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+    // Collect versions
+    ch_versions = ch_versions
+        .mix(SEQKIT_STATS.out.versions)
+        .mix(MAPPING.out.versions)
+        .mix(CNV_CHECK.out.versions)
+        .mix(SNP_CHECK.out.versions)
+
+    ch_samples = CAT_FASTQ.out.reads
+    .map { meta, _stats ->
+        def meta_reduced = file(params.outdir).name
+        tuple(id: meta_reduced)
+    }
+    .unique()
+
+    // Extract all versions into a single channel of values
+    versions = softwareVersionsToYAML(ch_versions)
+    // Collapse the channel of versions into a single value
+    versions = versions.collect().map { it.join('\n\n') }
+    versions = ch_samples
+        .combine(versions)
+
+    // Give it an ID of versions
+    versions = versions
+        .map {
+            versions_out ->
+            def section = "Versions"
+            def process = "versions"
+
+            [versions_out[0], versions_out[1]] + [section, process]
+            }
+
+    QUARTO_TEXT(
+        versions
+        )
+
+    ch_section_description = channel.of("Software Versions")
+
+    ch_section_inputs = QUARTO_TEXT.out.quarto_text
+        .combine(ch_section_description)
+
+    QUARTO_SECTION(
+        ch_section_inputs
+    )
+    // // Add the versions to the channel of sections for every report
+
+    ch_sections = ch_sections.mix(QUARTO_SECTION.out.quarto_section)
 
 
     
