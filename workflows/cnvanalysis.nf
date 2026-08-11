@@ -3,8 +3,7 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { CAT_FASTQ              } from '../modules/local/cat_fastq/main.nf'
-include { SEQKIT_STATS           } from '../modules/local/seqkit/main.nf'
+include { QC                     } from '../subworkflows/local/qc/qc.nf'
 include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
 include { CNV_CHECK              } from '../subworkflows/local/cnv_check/cnv_check.nf'
 include { SNP_CHECK              } from '../subworkflows/local/snp_check/snp_check.nf'
@@ -31,17 +30,12 @@ workflow CNVANALYSIS {
 
     ch_versions = Channel.empty()
 
-    CAT_FASTQ (
-        ch_samplesheet.map { meta, fastqFiles, ref ->
+    ch_qc = ch_samplesheet.map { meta, fastqFiles, ref ->
             tuple(meta, fastqFiles instanceof List ? fastqFiles.flatten() : [fastqFiles])
         }
-    )
 
-    //
-    // Run seqkit on the input fastq files to get basic stats
-    //
-    SEQKIT_STATS(
-        CAT_FASTQ.out.reads
+    QC (
+        ch_qc
     )
 
     //
@@ -81,9 +75,8 @@ workflow CNVANALYSIS {
     Collect sections for report
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-    ch_sections = Channel.empty()
-    //ch_sections = READS_QC.out.section
-    //ch_sections = ch_sections.mix(MAPPING.out.section)
+    ch_sections = QC.out.section
+    ch_sections = ch_sections.mix(MAPPING.out.section)
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,13 +85,13 @@ workflow CNVANALYSIS {
 */
     // Collect versions
     ch_versions = ch_versions
-        .mix(SEQKIT_STATS.out.versions)
+        .mix(QC.out.versions)
         .mix(MAPPING.out.versions)
         .mix(CNV_CHECK.out.versions)
         .mix(SNP_CHECK.out.versions)
 
-    ch_samples = CAT_FASTQ.out.reads
-    .map { meta, _stats ->
+    ch_samples = QC.out.reads
+    .map { meta, _reads ->
         def meta_reduced = file(params.outdir).name
         tuple(id: meta_reduced)
     }
