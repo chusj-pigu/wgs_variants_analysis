@@ -76,7 +76,8 @@ workflow CNVANALYSIS {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
     ch_sections = QC.out.section
-    ch_sections = ch_sections.mix(MAPPING.out.section)
+                    .mix(MAPPING.out.section)
+                    .mix(CNV_CHECK.out.section)
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,10 +151,9 @@ workflow CNVANALYSIS {
     ch_subtitle = channel.of('WGS Variants Report')
     ch_title    = channel.of('MPGI Variants Analysis')
 
-    ch_report_in = ch_report_sections
-        .combine(ch_subtitle)
-        .combine(ch_title)
-        .combine(ch_template)
+    ch_template = Channel.value(file(params.report_template))
+    ch_subtitle = Channel.value('WGS Variants Report')
+    ch_title    = Channel.value('MPGI Variants Analysis')
 
     QUARTO_REPORT(
         ch_report_sections,
