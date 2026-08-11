@@ -78,6 +78,15 @@ workflow CNVANALYSIS {
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Collect sections for report
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+    ch_sections = Channel.empty()
+    //ch_sections = READS_QC.out.section
+    //ch_sections = ch_sections.mix(MAPPING.out.section)
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     SOFTWARE VERSIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -119,23 +128,53 @@ workflow CNVANALYSIS {
     ch_section_description = channel.of("Software Versions")
 
     ch_section_inputs = QUARTO_TEXT.out.quarto_text
-        .combine(ch_section_description)
+       // .combine(ch_section_description)
 
     QUARTO_SECTION(
-        ch_section_inputs
+        ch_section_inputs,
+        ch_section_description
     )
-    // // Add the versions to the channel of sections for every report
+    // Add the versions to the channel of sections for every report
 
     ch_sections = ch_sections.mix(QUARTO_SECTION.out.quarto_section)
 
 
-    
-    versions       = ch_versions                 // channel: [ path(versions.yml) ]
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    REPORT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
 
-    // Emit outputs so the parent workflow can reference them
+
+    ch_report_sections = ch_sections
+        .groupTuple()
+        .map { meta, section, filePaths, reports ->
+            [meta, section, filePaths, reports]
+        }
+
+
+    ch_template = channel.fromPath(params.report_template)
+    ch_subtitle = channel.of('WGS Variants Report')
+    ch_title    = channel.of('MPGI Variants Analysis')
+
+    ch_report_in = ch_report_sections
+        .combine(ch_subtitle)
+        .combine(ch_title)
+        .combine(ch_template)
+
+    QUARTO_REPORT(
+        ch_report_sections,
+        ch_template,
+        ch_title,
+        ch_subtitle    
+    )
+
+    ch_report = QUARTO_REPORT.out.report
+
+
+
     emit:
-    multiqc_report = Channel.empty()   // placeholder - actual MultiQC step may set this
-    versions = versions
+    versions       = ch_versions                 // channel: [ path(versions.yml) ]
 }
 
 /*

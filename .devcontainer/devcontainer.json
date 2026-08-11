@@ -11,6 +11,7 @@
         "source=${localEnv:HOME}/test_data/ref_test,target=/workspaces/test_data/ref_test,type=bind,consistency=cached"
     ],
 
+    "postCreateCommand": "sudo /usr/lib/R/bin/Rscript -e 'install.packages(\"rmarkdown\", repos=\"https://cloud.r-project.org\")'",
     "postStartCommand": "sudo chown gitpod:gitpod /opt/conda/bin/nextflow && sudo chmod +x /opt/conda/bin/nextflow",
 
     "customizations": {
