@@ -145,11 +145,10 @@ workflow CNVANALYSIS {
     ch_section_description = channel.of("Software Versions")
 
     ch_section_inputs = QUARTO_TEXT.out.quarto_text
-       // .combine(ch_section_description)
+        .combine(ch_section_description)
 
     QUARTO_SECTION(
-        ch_section_inputs,
-        ch_section_description
+        ch_section_inputs
     )
     // Add the versions to the channel of sections for every report
 
@@ -162,27 +161,21 @@ workflow CNVANALYSIS {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+    ch_template = channel.fromPath(params.report_template)
+    ch_subtitle = channel.of('WGS Variants Report')
+    ch_title    = channel.of('MPGI Variants Analysis')
 
     ch_report_sections = ch_sections
         .groupTuple()
         .map { meta, section, filePaths, reports ->
             [meta, section, filePaths, reports]
         }
-
-
-    ch_template = channel.fromPath(params.report_template)
-    ch_subtitle = channel.of('WGS Variants Report')
-    ch_title    = channel.of('MPGI Variants Analysis')
-
-    ch_template = Channel.value(file(params.report_template))
-    ch_subtitle = Channel.value('WGS Variants Report')
-    ch_title    = Channel.value('MPGI Variants Analysis')
+        .combine(ch_title)
+        .combine(ch_subtitle)
+        .combine(ch_template)
 
     QUARTO_REPORT(
-        ch_report_sections,
-        ch_template,
-        ch_title,
-        ch_subtitle    
+        ch_report_sections
     )
 
     ch_report = QUARTO_REPORT.out.report

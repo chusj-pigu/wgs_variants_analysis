@@ -89,10 +89,10 @@ workflow KARYOTYPE {
         .map { id, section, filePaths ->
             [id, section[0], filePaths]
         }
+        .combine(ch_section_description)
 
     QUARTO_SECTION(
-        ch_section_inputs,
-        ch_section_description
+        ch_section_inputs
     )
 
     ch_section = QUARTO_SECTION.out.quarto_section

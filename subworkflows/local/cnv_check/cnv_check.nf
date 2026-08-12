@@ -50,10 +50,10 @@ workflow CNV_CHECK {
         .map { meta, section, filePaths -> tuple([id: file(params.outdir).name], section, filePaths) }
         .groupTuple()
         .map { meta, section, filePaths -> [meta, section[0], filePaths] }
+        .combine(ch_section_description)
 
     QUARTO_SECTION(
-        ch_section_inputs,
-        ch_section_description
+        ch_section_inputs
     )
 
     ch_section = QUARTO_SECTION.out.quarto_section
