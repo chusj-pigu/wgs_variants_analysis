@@ -7,6 +7,7 @@ include { QC                     } from '../subworkflows/local/qc/qc.nf'
 include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
 include { CNV_CHECK              } from '../subworkflows/local/cnv_check/cnv_check.nf'
 include { SNP_CHECK              } from '../subworkflows/local/snp_check/snp_check.nf'
+include { KARYOTYPE              } from '../subworkflows/local/karyotype/karyotype.nf'
 include { QUARTO_TEXT            } from '../modules/local/quarto/main.nf'
 include { QUARTO_SECTION         } from '../modules/local/quarto/main.nf'
 include { QUARTO_REPORT          } from '../modules/local/quarto/main.nf'
@@ -70,6 +71,23 @@ workflow CNVANALYSIS {
        ch_refinfo
     )
 
+    if (params.karyotype) {
+        ch_karyotype_ref     = Channel.value(file(params.karyotype_ref))
+        ch_karyotype_repeats = Channel.value(file(params.karyotype_repeats))
+        ch_karyotype_config  = Channel.value(file(params.karyotype_config))
+
+
+        log.info "Karyotype analysis is enabled. Running KARYOTYPE module."
+
+        KARYOTYPE (
+            MAPPING.out.bam,
+            ch_karyotype_ref,
+            ch_karyotype_repeats,
+            ch_karyotype_config
+        )
+    }
+    
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Collect sections for report
@@ -78,7 +96,9 @@ workflow CNVANALYSIS {
     ch_sections = QC.out.section
                     .mix(MAPPING.out.section)
                     .mix(CNV_CHECK.out.section)
-
+    if (params.karyotype) {
+        ch_sections = ch_sections.mix(KARYOTYPE.out.section)
+    }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     SOFTWARE VERSIONS
@@ -90,6 +110,9 @@ workflow CNVANALYSIS {
         .mix(MAPPING.out.versions)
         .mix(CNV_CHECK.out.versions)
         .mix(SNP_CHECK.out.versions)
+    if (params.karyotype) {
+        ch_versions = ch_versions.mix(KARYOTYPE.out.versions)
+    }
 
     ch_samples = QC.out.reads
     .map { meta, _reads ->

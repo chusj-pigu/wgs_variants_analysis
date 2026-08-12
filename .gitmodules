@@ -30,3 +30,7 @@
 	path = modules/local/seqkit
 	url = https://github.com/chusj-pigu/wf-modules
 	branch = seqkit
+[submodule "modules/local/nasvar"]
+	path = modules/local/nasvar
+	url = https://github.com/chusj-pigu/wf-modules
+	branch = nasvar
