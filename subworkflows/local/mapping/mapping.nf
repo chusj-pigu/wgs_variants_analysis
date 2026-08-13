@@ -48,34 +48,40 @@ workflow MAPPING {
     'Mean identity'
     ]
 
-    ch_cramino_summary = CRAMINO_STATS.out.stats
-    .map { meta, table -> tuple(meta.id, table) }
-    .map { sample, table ->
-        def project = file(params.outdir).name
-        // Parse cramino's "key\tvalue" lines into a lookup map
-        def stats = table.readLines()
-            .findAll { it.contains('\t') }
-            .collectEntries { line ->
-                def parts = line.split('\t', 2)
-                [(parts[0]): parts[1]]
-            }
-        tuple(project, sample, stats)
-    }
-    .collectFile(sort: true) { project, sample, stats ->
-        def row = ([sample] + desired_stats.collect { stats[it] ?: 'NA' }).join('\t')
-        return [ "${project}_mapping_stats.tsv", "${row}\n" ]
-    }
+    ch_cramino_parsed = CRAMINO_STATS.out.stats
+        .map { meta, table ->
+            def stats = table.readLines()
+                .findAll { it.contains('\t') }
+                .collectEntries { line ->
+                    def parts = line.split('\t', 2)
+                    [(parts[0]): parts[1]]
+                }
+            tuple(meta, stats)
+        }
+
+    ch_mean_coverage = ch_cramino_parsed
+        .map { meta, stats -> tuple(meta, stats['Mean coverage'] ?: 'NA') }
+
+    ch_cramino_summary = ch_cramino_parsed
+        .map { meta, stats ->
+            def project = file(params.outdir).name
+            tuple(project, meta.id, stats)
+        }
+        .collectFile(sort: true) { project, sample, stats ->
+            def row = ([sample] + desired_stats.collect { stats[it] ?: 'NA' }).join('\t')
+            return [ "${project}_mapping_stats.tsv", "${row}\n" ]
+        }
 
     ch_quarto_table = ch_cramino_summary
         .map { table ->
             def meta_project = table.name.replace('_mapping_stats.tsv', '')
-            tuple(id:meta_project,table)                    // Convert meta project to meta id
+            tuple(id: meta_project, table)
         }
         .map { meta, table ->
-            def caption = "Summary mapping stats for ${meta.id} on BAM files (no filtering)"
+            def caption   = "Summary mapping stats for ${meta.id} on BAM files (no filtering)"
             def col_names = "Sample, # Alignments, % from total alignments, Yield [Gb], Mean Coverage, N50, Mean length, Mean identity"
-            def section = "Mapping_QC"
-            def process = "mapping-qc-${meta.id}"
+            def section   = "Mapping_QC"
+            def process   = "mapping-qc-${meta.id}"
             tuple(meta, table, caption, col_names, section, process)
         }
     
@@ -125,6 +131,7 @@ workflow MAPPING {
     emit:
     bam      = SAMTOOLS_INDEX.out.bamfile_index       // Final sorted BAM with index
     coverage = CRAMINO_STATS.out.stats                // Coverage stats
+    mean_cov = ch_mean_coverage                       // Mean coverage for each sample
     section  = QUARTO_SECTION.out.quarto_section      // Quarto section for mapping stats
     versions = ch_versions                            // All tool versions
 

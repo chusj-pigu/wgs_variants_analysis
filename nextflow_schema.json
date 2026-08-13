@@ -69,6 +69,11 @@
                     "format": "file-path",
                     "exists": true,
                     "description": "Config file for karyotype analysis"
+                },
+                "karyotype_cov_cutoff": {
+                    "type": "number",
+                    "default": 1.0,
+                    "description": "Coverage cutoff for karyotype analysis"
                 }
             }
         },  
@@ -286,7 +291,8 @@
                 "required": [
                     "karyotype_ref",
                     "karyotype_repeats",
-                    "karyotype_config"
+                    "karyotype_config",
+                    "karyotype_cov_cutoff"
                 ]
             }
         }

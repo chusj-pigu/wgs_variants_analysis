@@ -11,6 +11,7 @@ workflow KARYOTYPE {
     ref_json    // reference json file
     repeats     // repeats file
     config      // config file for karyotype analysis
+    mean_cov    // mean coverage from mapping subworkflow
 
     main:
     ch_versions = Channel.empty() // For collecting version info
@@ -41,19 +42,31 @@ workflow KARYOTYPE {
     'iscn_string'
     ]
 
-    ch_nasvar_summary = NASVAR_KARYOTYPE.out.karyo_json
-    .map { meta, json -> tuple(meta.id, json) }
-    .map { sample, json ->
-        def project = file(params.outdir).name
-        // Parse nasvar's "key\tvalue" lines into a lookup map
-        def karyo_res = new groovy.json.JsonSlurper().parse(json)
-        def karyo_data = karyo_res.karyotype ?: [:]
-        tuple(project, sample, karyo_data)
-    }
-    .collectFile(sort: true) { project, sample, karyo_res ->
-        def row = ([sample] + desired_stats.collect { karyo_res[it] ?: 'NA' }).join('\t')
-        return [ "${project}_karyotype_results.tsv", "${row}\n" ]
-    }
+    // Join karyotype results with mean coverage per-sample (keyed by meta.id)
+    ch_karyo_with_cov = NASVAR_KARYOTYPE.out.karyo_json
+        .map { meta, json -> tuple(meta.id, meta, json) }
+        .join( mean_cov.map { meta, cov -> tuple(meta.id, cov) } )
+        .map { id, meta, json, cov -> tuple(meta, json, cov) }
+
+    ch_nasvar_summary = ch_karyo_with_cov
+        .map { meta, json, cov ->
+            def project = file(params.outdir).name
+            // Parse nasvar's json output into a lookup map
+            def karyo_res = new groovy.json.JsonSlurper().parse(json)
+            def karyo_data = karyo_res.karyotype ?: [:]
+            tuple(project, meta.id, karyo_data, cov)
+        }
+        .collectFile(sort: true) { project, sample, karyo_res, cov ->
+            def covValue = (cov == 'NA' || cov == null) ? null : (cov.toString().findAll(/[\d.]+/).join('') ?: null)
+            def isLowCov = covValue == null || (covValue as Double) < (params.karyotype_cov_cutoff as Double)
+            
+            def row = isLowCov
+                ? ([sample] + desired_stats.collect { "low_coverage(<${params.karyotype_cov_cutoff})" }).join('\t')
+                : ([sample] + desired_stats.collect { karyo_res[it] ?: 'NA' }).join('\t')
+
+            return [ "${project}_karyotype_results.tsv", "${row}\n" ]
+    
+        }
 
     ch_quarto_table = ch_nasvar_summary
         .map { table ->

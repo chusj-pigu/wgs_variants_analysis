@@ -83,7 +83,8 @@ workflow CNVANALYSIS {
             MAPPING.out.bam,
             ch_karyotype_ref,
             ch_karyotype_repeats,
-            ch_karyotype_config
+            ch_karyotype_config,
+            MAPPING.out.mean_cov
         )
     }
     
