@@ -15,7 +15,6 @@ workflow MAPPING {
     main:
     ch_versions = Channel.empty() // For collecting version info
 
-
     // Align reads to reference genome
     MINIMAP2_ALIGN (ch_samplesheet)
     
@@ -63,12 +62,14 @@ workflow MAPPING {
         .map { meta, stats -> tuple(meta, stats['Mean coverage'] ?: 'NA') }
 
     ch_cramino_summary = ch_cramino_parsed
-        .map { meta, stats ->
+        .join (ch_samplesheet)
+        .map { meta, stats, fastqfiles, ref ->
             def project = file(params.outdir).name
-            tuple(project, meta.id, stats)
+            def refname = file(ref).name
+            tuple(project, meta.id, refname, stats)
         }
-        .collectFile(sort: true) { project, sample, stats ->
-            def row = ([sample] + desired_stats.collect { stats[it] ?: 'NA' }).join('\t')
+        .collectFile(sort: true) { project, sample, refname, stats ->
+            def row = ([sample] + [refname] + desired_stats.collect { stats[it] ?: 'NA' }).join('\t')
             return [ "${project}_mapping_stats.tsv", "${row}\n" ]
         }
 
@@ -79,7 +80,7 @@ workflow MAPPING {
         }
         .map { meta, table ->
             def caption   = "Summary mapping stats for ${meta.id} on BAM files (no filtering)"
-            def col_names = "Sample, # Alignments, % from total alignments, Yield [Gb], Mean Coverage, N50, Mean length, Mean identity"
+            def col_names = "Sample, Ref, # Alignments, % from total alignments, Yield [Gb], Mean Coverage, N50, Mean length, Mean identity"
             def section   = "Mapping_QC"
             def process   = "mapping-qc-${meta.id}"
             tuple(meta, table, caption, col_names, section, process)

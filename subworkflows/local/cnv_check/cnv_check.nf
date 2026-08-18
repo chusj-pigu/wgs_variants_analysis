@@ -7,7 +7,7 @@ include { QUARTO_SECTION       } from '../../../modules/local/quarto/main.nf'   
 workflow CNV_CHECK {
     take:
     bam         // channel: from mapping workflow, includes index
-    ref         // reference ID (hg19 or hg38)
+    ref         // reference ID (mm10, hg19 or hg38)
 
     main:
     ch_versions = Channel.empty() // For collecting version info
@@ -26,10 +26,11 @@ workflow CNV_CHECK {
     */
 
     ch_figure_input = QDNASEQ_CALL.out.cov_png
-        .map { meta, figure ->
+        .join(ref)
+        .map { meta, figure, ref ->
             def section = "CNV"
             def process = "cnv-qdnaseq-${meta.id}"
-            def caption = "Coverage plot for ${meta.id} on BAM files (no filtering)"
+            def caption = "Coverage plot for ${meta.id} on ${ref} aligned BAM files (no filtering)"
             tuple(meta, figure, caption, section, process)
         }
     QUARTO_FIGURE(
