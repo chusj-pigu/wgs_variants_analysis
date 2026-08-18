@@ -51,29 +51,6 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable karyotype analysis"
-                },
-                "karyotype_ref": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "description": "Reference JSON file for karyotype analysis"
-                },
-                "karyotype_repeats": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "description": "Repeats file for karyotype analysis"
-                },
-                "karyotype_config": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "description": "Config file for karyotype analysis"
-                },
-                "karyotype_cov_cutoff": {
-                    "type": "number",
-                    "default": 1.0,
-                    "description": "Coverage cutoff for karyotype analysis"
                 }
             }
         },  
@@ -277,24 +254,6 @@
         },
         {
             "$ref": "#/$defs/karyotype_options"
-        },
-        {
-            "if": {
-                "required": ["karyotype"],
-                "properties": {
-                "karyotype": {
-                    "const": true
-                    }
-                }
-            },
-            "then": {
-                "required": [
-                    "karyotype_ref",
-                    "karyotype_repeats",
-                    "karyotype_config",
-                    "karyotype_cov_cutoff"
-                ]
-            }
         }
     ]
 }

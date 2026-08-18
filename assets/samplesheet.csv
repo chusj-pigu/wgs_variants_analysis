@@ -1,3 +1,3 @@
-sample,path_to_fastq,ref
-Sample1,/path/to/fastq/files,/path/to/ref/file/hg38.fa
-Sample2,/path/to/fastq/files,/path/to/ref/file/hg38.fa
+sample,path_to_fastq,ref,karyotype_ref,karyotype_repeats,karyotype_config,karyotype_cov_cutoff
+Sample1,/path/to/fastq/files,/path/to/ref/file/hg38.fa,/path/to/ref/file/hg38.json,/path/to/ref/file/repeat_hg38.bed,/path/to/ref/file/nasvar_config.json,0.2
+Sample2,/path/to/fastq/files,/path/to/ref/file/mm10.fa,/path/to/ref/file/mm10.json,/path/to/ref/file/repeat_mm10.bed,/path/to/ref/file/nasvar_config.json,0.2

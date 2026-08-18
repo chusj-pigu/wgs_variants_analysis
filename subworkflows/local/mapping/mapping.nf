@@ -65,7 +65,7 @@ workflow MAPPING {
         .join (ch_samplesheet)
         .map { meta, stats, fastqfiles, ref ->
             def project = file(params.outdir).name
-            def refname = file(ref).name
+            def refname = file(ref).name.replaceAll(/\.(fa|fasta)(\.gz)?$/, '')
             tuple(project, meta.id, refname, stats)
         }
         .collectFile(sort: true) { project, sample, refname, stats ->

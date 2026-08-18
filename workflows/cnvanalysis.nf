@@ -31,6 +31,15 @@ workflow CNVANALYSIS {
 
     ch_versions = Channel.empty()
 
+    if (params.karyotype) {
+        ch_karyotype_refs = ch_samplesheet.map { meta, fastqFiles, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cutoff ->
+            tuple(meta, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cutoff)
+        }
+        ch_samplesheet = ch_samplesheet.map { meta, fastqFiles, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cutoff ->
+            tuple(meta, fastqFiles, ref)
+        }
+    }
+
     ch_qc = ch_samplesheet.map { meta, fastqFiles, ref ->
             tuple(meta, fastqFiles instanceof List ? fastqFiles.flatten() : [fastqFiles])
         }
@@ -72,18 +81,12 @@ workflow CNVANALYSIS {
     )
 
     if (params.karyotype) {
-        ch_karyotype_ref     = Channel.value(file(params.karyotype_ref))
-        ch_karyotype_repeats = Channel.value(file(params.karyotype_repeats))
-        ch_karyotype_config  = Channel.value(file(params.karyotype_config))
-
 
         log.info "Karyotype analysis is enabled. Running KARYOTYPE module."
 
         KARYOTYPE (
             MAPPING.out.bam,
-            ch_karyotype_ref,
-            ch_karyotype_repeats,
-            ch_karyotype_config,
+            ch_karyotype_refs,
             MAPPING.out.mean_cov
         )
     }

@@ -24,7 +24,55 @@
                 "format": "file-path",
                 "exists": true,
                 "errorMessage": "Path to reference file must be provided and must exist"
+            },
+            "karyotype_ref": {
+                "errorMessage": "Path to NASVAR reference file (.json) must be provided and must exist when --karyotype is TRUE",
+                "anyOf": [
+                    {
+                        "type": "string",
+                        "format": "file-path",
+                        "exists": true,
+                        "pattern": "^\\S+\\.(json)$"
+                    },
+                    { "type": "string", "maxLength": 0 }
+                ]
+            },
+            "karyotype_repeats": {
+                "errorMessage": "Path to NASVAR repeats reference file (.bed) must be provided and must exist when --karyotype is TRUE",
+                "anyOf": [
+                    {
+                        "type": "string",
+                        "format": "file-path",
+                        "exists": true,
+                        "pattern": "^\\S+\\.(bed)$"
+                    },
+                    { "type": "string", "maxLength": 0 }
+                ]                
+            },
+            "karyotype_config": {
+                "errorMessage": "Path to NASVAR config file (.json) must be provided and must exist when --karyotype is TRUE",
+                "anyOf": [
+                    {
+                        "type": "string",
+                        "format": "file-path",
+                        "exists": true,
+                        "pattern": "^\\S+\\.(json)$"
+                    },
+                    { "type": "string", "maxLength": 0 }
+                ]     
+            },
+            "karyotype_cov_cutoff": {
+                "errorMessage": "Coverage cut-off must be provided when --karyotype is TRUE [default: 0.2]",
+                "anyOf": [
+                    {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "default": 0.2
+                    },
+                    { "type": "string", "maxLength": 0 }
+                ]
             }
+
         },
         "required": ["sample", "path_to_fastq", "ref"]
     }

@@ -71,61 +71,36 @@ workflow PIPELINE_INITIALISATION {
     //
     // Create channel from input file provided through params.input
     //
-
-    Channel
-        .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
-        .map { meta, path_to_fastq, ref ->
-            // Validate reference file
-            def refPath = ref.toString()
-            def refFile = new File(refPath)
-            if (!refFile.exists()) {
-                error("Reference file for sample '${meta.id}' does not exist: ${refPath}")
+    if (params.karyotype) {
+        Channel
+            .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
+            .map { meta, path_to_fastq, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cov_cutoff ->
+                def refPath      = validateRef(meta.id, ref)
+                def fastqFiles   = validateFastqDir(meta.id, path_to_fastq)
+                def ktRefPath    = validateKaryotypeFile(meta.id, karyotype_ref,     'karyotype_ref',     '.json')
+                def ktRepPath    = validateKaryotypeFile(meta.id, karyotype_repeats,  'karyotype_repeats', '.bed')
+                def ktConfigPath = validateKaryotypeFile(meta.id, karyotype_config,   'karyotype_config',  '.json')
+                def isPaired     = fastqFiles.any { it =~ /(?i)(_R?2|_2)\./ }
+                meta             = meta + [ single_end: !isPaired ]
+                return [ meta.id, meta, fastqFiles, refPath, ktRefPath, ktRepPath, ktConfigPath, karyotype_cov_cutoff ]
             }
-            def r = refPath.toLowerCase()
-            if (!(r.endsWith('.fa') || r.endsWith('.fasta') || r.endsWith('.fa.gz') || r.endsWith('.fasta.gz'))) {
-                error("Reference file for sample '${meta.id}' must be a .fa or .fasta file (optionally gzipped): ${refPath}")
+            .groupTuple()
+            .map { validateInputSamplesheet(it, true) }
+            .set { ch_samplesheet }
+    } else {
+        Channel
+            .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
+            .map { meta, path_to_fastq, ref ->
+                def refPath    = validateRef(meta.id, ref)
+                def fastqFiles = validateFastqDir(meta.id, path_to_fastq)
+                def isPaired   = fastqFiles.any { it =~ /(?i)(_R?2|_2)\./ }
+                meta           = meta + [ single_end: !isPaired ]
+                return [ meta.id, meta, fastqFiles, refPath ]
             }
-            
-            // Check for the presence of the .fai index file
-            def faiPath = refPath + ".fai"
-            def faiFile = new File(faiPath)
-            if (!faiFile.exists()) {
-                error("Index file (.fai) for reference '${refPath}' does not exist. Please index the reference using 'samtools faidx ${refPath}'")
-            }
-
-            // Validate fastq directory
-            def fqDirPath = path_to_fastq.toString()
-            def fqDir = new File(fqDirPath)
-            if (!fqDir.exists() || !fqDir.isDirectory()) {
-                error("FastQ directory for sample '${meta.id}' does not exist or is not a directory: ${fqDirPath}")
-            }
-
-            // Find fastq files inside the provided directory
-            def fastqFiles = fqDir.listFiles()?.findAll { f ->
-                def n = f.name.toLowerCase()
-                return n.endsWith('.fq') || n.endsWith('.fq.gz') || n.endsWith('.fastq') || n.endsWith('.fastq.gz')
-            }?.collect { it.path } ?: []
-            if (fastqFiles.size() == 0) {
-                error("No FastQ files found in directory for sample '${meta.id}': ${fqDirPath}")
-            }
-
-            // Infer endedness: if any file looks like R2 assume paired-end, otherwise single-end
-            def isPaired = fastqFiles.any { it =~ /(?i)(_R?2|_2)\\./ }
-
-            if (isPaired) {
-                meta = meta + [ single_end:false ]
-            } else {
-                meta = meta + [ single_end:true ]
-            }
-
-            // Return tuple: sample id, meta (for grouping/validation), list of fastq file paths and reference path
-            return [ meta.id, meta, fastqFiles, refPath ]
-        }
-        .groupTuple()
-        .map { samplesheet ->
-            validateInputSamplesheet(samplesheet)
-        }
-        .set { ch_samplesheet }
+            .groupTuple()
+            .map { validateInputSamplesheet(it, false) }
+            .set { ch_samplesheet }
+    }
 
     emit:
     samplesheet = ch_samplesheet
@@ -191,25 +166,98 @@ def validateInputParameters() {
 }
 
 //
+// Validate and resolve a reference FASTA path (must exist and have a .fai index)
+// Returns the resolved path string.
+//
+def validateRef(sampleId, ref) {
+    def refPath = ref.toString()
+    def refFile = file(refPath)
+    if (!refFile.exists()) {
+        error("Reference file for sample '${sampleId}' does not exist: ${refPath}")
+    }
+    def r = refPath.toLowerCase()
+    if (!(r.endsWith('.fa') || r.endsWith('.fasta') || r.endsWith('.fa.gz') || r.endsWith('.fasta.gz'))) {
+        error("Reference file for sample '${sampleId}' must be a FASTA file (.fa/.fasta, optionally .gz): ${refPath}")
+    }
+    def faiFile = file("${refPath}.fai")
+    if (!faiFile.exists()) {
+        error("Index file (.fai) for reference of sample '${sampleId}' does not exist. " +
+              "Please run: samtools faidx ${refPath}")
+    }
+    return refPath
+}
+
+//
+// Validate a FastQ directory and return the list of FastQ file paths it contains.
+//
+def validateFastqDir(sampleId, path_to_fastq) {
+    def fqDirPath = path_to_fastq.toString()
+    def fqDir     = file(fqDirPath)
+    if (!fqDir.exists() || !fqDir.isDirectory()) {
+        error("FastQ directory for sample '${sampleId}' does not exist or is not a directory: ${fqDirPath}")
+    }
+    def fastqFiles = fqDir.list()
+        .findAll { name ->
+            def n = name.toLowerCase()
+            n.endsWith('.fq') || n.endsWith('.fq.gz') || n.endsWith('.fastq') || n.endsWith('.fastq.gz')
+        }
+        .collect { name -> fqDir.resolve(name).toString() }
+    if (fastqFiles.size() == 0) {
+        error("No FastQ files found in directory for sample '${sampleId}': ${fqDirPath}")
+    }
+    return fastqFiles
+}
+
+//
+// Validate a karyotype-specific file (must exist and match the expected extension).
+// Returns the resolved path string.
+//
+def validateKaryotypeFile(sampleId, filePath, fieldName, expectedExt) {
+    def pathStr  = filePath.toString()
+    def fileObj  = file(pathStr)
+    if (!fileObj.exists()) {
+        error("Karyotype field '${fieldName}' for sample '${sampleId}' does not exist: ${pathStr}")
+    }
+    if (!pathStr.toLowerCase().endsWith(expectedExt)) {
+        error("Karyotype field '${fieldName}' for sample '${sampleId}' must be a ${expectedExt} file " +
+              "(see NASVAR documentation): ${pathStr}")
+    }
+    return pathStr
+}
+
+//
 // Validate channels from input samplesheet
 //
-def validateInputSamplesheet(input) {
-    def (metas, fastqs, refs) = input[1..3]
-
-    // Check that multiple runs of the same sample are of the same datatype i.e. single-end / paired-end
-    def endedness_ok = metas.collect{ meta -> meta.single_end }.unique().size == 1
-    if (!endedness_ok) {
-        error("Please check input samplesheet -> Multiple runs of a sample must be of the same datatype i.e. single-end or paired-end: ${metas[0].id}")
+//
+// Validate channels from input samplesheet after groupTuple().
+// Checks that multiple runs of the same sample share the same endedness.
+// Returns the tuple emitted into ch_samplesheet.
+//
+// Non-karyotype:  [ meta, fastqFiles, refPath ]
+// Karyotype:      [ meta, fastqFiles, refPath, ktRefPath, ktRepPath, ktConfigPath, ktCovCutoff ]
+//
+def validateInputSamplesheet(input, Boolean withKaryotype) {
+    def metas = input[1]
+    if (metas.collect { it.single_end }.unique().size() != 1) {
+        error("Please check input samplesheet -> Multiple runs of a sample must be of the same " +
+              "datatype (single-end or paired-end): ${metas[0].id}")
     }
 
-        // Return meta map, fastq directory path (string), and reference path (string)
-        def meta = metas[0]
-        // fastqs is a list of lists of fastqFiles from groupTuple; we want the original directory path
-        def fastqDirPath = fastqs.flatten()
-        def refPath = refs[0]
+    def meta        = metas[0]
+    def fastqFiles  = input[2].flatten()
+    def refPath     = input[3][0]
 
-        return [ meta, fastqDirPath, refPath ]
+    if (!withKaryotype) {
+        return [ meta, fastqFiles, refPath ]
+    }
+
+    def ktRefPath    = input[4][0]
+    def ktRepPath    = input[5][0]
+    def ktConfigPath = input[6][0]
+    def ktCovCutoff  = input[7][0]
+    return [ meta, fastqFiles, refPath, ktRefPath, ktRepPath, ktConfigPath, ktCovCutoff ]
 }
+
 //
 // Get attribute from genome config file e.g. fasta
 //
