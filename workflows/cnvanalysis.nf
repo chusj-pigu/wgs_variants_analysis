@@ -32,12 +32,14 @@ workflow CNVANALYSIS {
     ch_versions = Channel.empty()
 
     if (params.karyotype) {
-        ch_karyotype_refs = ch_samplesheet.map { meta, fastqFiles, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cutoff ->
-            tuple(meta, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cutoff)
+        ch_karyotype_refs = ch_samplesheet.map { meta, fastqFiles, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cov_cutoff ->
+            tuple(meta, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cov_cutoff)
         }
-        ch_samplesheet = ch_samplesheet.map { meta, fastqFiles, ref, karyotype_ref, karyotype_repeats, karyotype_config, karyotype_cutoff ->
-            tuple(meta, fastqFiles, ref)
-        }
+    }
+
+    ch_samplesheet = ch_samplesheet.map { row ->
+        def (meta, fastqFiles, ref) = row
+        tuple(meta, fastqFiles, ref)
     }
 
     ch_qc = ch_samplesheet.map { meta, fastqFiles, ref ->

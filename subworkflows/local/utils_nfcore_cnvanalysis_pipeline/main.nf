@@ -90,7 +90,10 @@ workflow PIPELINE_INITIALISATION {
     } else {
         Channel
             .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
-            .map { meta, path_to_fastq, ref ->
+            .map { row ->
+                def meta          = row[0]
+                def path_to_fastq = row[1]
+                def ref           = row[2]
                 def refPath    = validateRef(meta.id, ref)
                 def fastqFiles = validateFastqDir(meta.id, path_to_fastq)
                 def isPaired   = fastqFiles.any { it =~ /(?i)(_R?2|_2)\./ }
