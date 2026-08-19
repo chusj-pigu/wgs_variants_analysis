@@ -68,10 +68,14 @@ workflow KARYOTYPE {
                 ? null
                 : covStr.replaceAll(/[^\d.]/, '') ?: null
             def isLowCov = (covValue == null) || ((covValue as Double) < (cutoff as Double))
-            
-            def fields = isLowCov
-                ? desired_stats.collect { "low_coverage(<${cutoff})" }
-                : desired_stats.collect { karyo_result[it]?.toString() ?: 'NA' }
+
+            def isMm10 = (refname == "mm10")
+
+            def fields = isMm10
+                ? desired_stats.collect { "not_available"}
+                : isLowCov
+                    ? desired_stats.collect { "low_coverage(<${cutoff})" }
+                    : desired_stats.collect { karyo_result[it]?.toString() ?: 'NA' }
 
             def tsvRow = ([sampleId] + [refname] + fields).join('\t')
 
