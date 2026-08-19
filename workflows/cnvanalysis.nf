@@ -169,10 +169,32 @@ workflow CNVANALYSIS {
     ch_subtitle = channel.of('WGS Variants Report')
     ch_title    = channel.of('MPGI Variants Analysis')
 
+    //Fix sections order in final report
+    def sectionOrder = [
+        'Reads_QC',
+        'Mapping_QC',
+        'CNV',
+        'Karyotype',
+        'Software Versions'
+    ]
+
     ch_report_sections = ch_sections
         .groupTuple()
-        .map { meta, section, filePaths, reports ->
-            [meta, section, filePaths, reports]
+        .map { meta, sections, filePaths, reports ->
+            def zipped = [sections, filePaths, reports].transpose()
+            zipped = zipped.sort(false) { a, b ->
+                def ia = sectionOrder.indexOf(a[0])
+                def ib = sectionOrder.indexOf(b[0])
+                if (ia < 0) ia = sectionOrder.size()
+                if (ib < 0) ib = sectionOrder.size()
+                ia <=> ib
+            }
+
+            def sortedSections  = zipped.collect { it[0] }
+            def sortedFilePaths = zipped.collect { it[1] }
+            def sortedReports   = zipped.collect { it[2] }
+
+            [meta, sortedSections, sortedFilePaths, sortedReports]
         }
         .combine(ch_title)
         .combine(ch_subtitle)
