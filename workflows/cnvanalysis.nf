@@ -7,6 +7,7 @@ include { QC                     } from '../subworkflows/local/qc/qc.nf'
 include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
 include { CNV_CHECK              } from '../subworkflows/local/cnv_check/cnv_check.nf'
 include { SNP_CHECK              } from '../subworkflows/local/snp_check/snp_check.nf'
+include { YCHROM_VALIDATION      } from '../subworkflows/local/ychrom_validation/ychrom_validation.nf'
 include { KARYOTYPE              } from '../subworkflows/local/karyotype/karyotype.nf'
 include { QUARTO_TEXT            } from '../modules/local/quarto/main.nf'
 include { QUARTO_SECTION         } from '../modules/local/quarto/main.nf'
@@ -82,9 +83,16 @@ workflow CNVANALYSIS {
        ch_refinfo
     )
 
+    
+
     if (params.karyotype) {
 
         log.info "Karyotype analysis is enabled. Running KARYOTYPE module."
+
+        YCHROM_VALIDATION (
+            MAPPING.out.bam,
+            MAPPING.out.mean_cov
+        )
 
         KARYOTYPE (
             MAPPING.out.bam,
@@ -103,7 +111,8 @@ workflow CNVANALYSIS {
                     .mix(MAPPING.out.section)
                     .mix(CNV_CHECK.out.section)
     if (params.karyotype) {
-        ch_sections = ch_sections.mix(KARYOTYPE.out.section)
+        ch_sections = ch_sections.mix(YCHROM_VALIDATION.out.section)
+                    .mix(KARYOTYPE.out.section)
     }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -176,6 +185,7 @@ workflow CNVANALYSIS {
         'Reads_QC',
         'Mapping_QC',
         'CNV',
+        'chrY_Validation',
         'Karyotype',
         'Software Versions'
     ]

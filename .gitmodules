@@ -34,3 +34,7 @@
 	path = modules/local/nasvar
 	url = https://github.com/chusj-pigu/wf-modules
 	branch = nasvar
+[submodule "modules/local/mosdepth"]
+	path = modules/local/mosdepth
+	url = https://github.com/chusj-pigu/wf-modules.git
+	branch = mosdepth
