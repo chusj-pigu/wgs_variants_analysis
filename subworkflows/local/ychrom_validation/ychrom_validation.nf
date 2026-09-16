@@ -45,7 +45,7 @@ workflow YCHROM_VALIDATION {
         .map { meta, coverage, mean_cov_value ->
             def mc = mean_cov_value.toString().toFloat()
             def ratio = coverage / mc
-            def sex_call = ratio > 0.5 ? "Male" : "Female"
+            def sex_call = ratio > 0.4 ? "Male" : (ratio >= 0.2 ? "Probable Male" : "Female")
             tuple(meta, [meta.id, coverage, mc, ratio, sex_call])
         }
 
@@ -85,7 +85,7 @@ workflow YCHROM_VALIDATION {
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     */
 
-    ch_section_description = channel.value("Y chromosome presence validation using MSY locus coverage. The mean coverage of the MSY locus is calculated and compared to the mean coverage of the run to determine if the sample is male or female.")
+    ch_section_description = channel.value("Y chromosome presence validation using MSY locus coverage. The mean coverage of the MSY locus is calculated and compared to the mean coverage of the run to determine if the sample is male or female. [Ratio < 0.2 : Female, 0.2 <= Ratio < 0.4 : Probable Male, Ratio >= 0.4 : Male]")
 
     ch_section_inputs = ch_section_inputs
         .map { meta, section, filePaths -> tuple([id: file(params.outdir).name], section, filePaths) }
